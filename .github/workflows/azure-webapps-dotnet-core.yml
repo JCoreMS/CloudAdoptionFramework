@@ -29,9 +29,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-# defaults:
-#  run:
-#    working-directory: ready/AzNamingTool
+defaults:
+ run:
+   working-directory: ready/AzNamingTool
     
 permissions:
   contents: read
