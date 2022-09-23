@@ -1,122 +1,76 @@
-# Azure Naming Tool
+[Overview](./) | [Installation](INSTALLATION.md) | [Updating](UPDATING.md) | [Using the API](USINGTHEAPI.md) | [Version History](VERSIONHISTORY.md) 
 
-## Description
+# Azure Naming Tool v2 - Overview
 
-The Azure Naming Tool was built to accelerate Azure deployments using the [Cloud Adoption Framework (CAF)](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/) as a baseline. Recognizing the lengthy, complex process it was for organizations to develop a standardized naming convention, the tool takes the complexity out of the process to generate a customizable naming convention within minutes.
+<img src="./wwwroot/images/AzureNamingToolLogo.png?raw=true" alt="Azure Naming Tool" title="Azure Naming Tool" height="150"/>
 
-The Azure Naming Tool creates a custom naming reference guide and name generator for your Azure deployments. The tool initially begins with running a PowerShell script to collect organizational specific naming preferences.  This data is collected and stored in the "configuration.csv" file. The script also outputs an HTML file.  The HTML file contains both the reference guide and name generator using the data collected from the PowerShell script. These artifacts can be used to submit for approvals, accelerate deployments, and enhance overall governance practices.
 
-If the naming convention needs to be adjusted, the organizational specific data can edited in the CSV files before re-executing the PowerShell Script again. This will generate a new HTML file containing the updated reference guide and name generator.
+Stay up to date on new features and annoucements here;
 
-> **Important** - Due to the relative paths integrated within the script, you **MUST** run the script from the same directory where it is stored on your file system.
+[Twitter/AzureNamingTool](https://twitter.com/azurenamingtool)
 
-## Azure Naming Tool Components
 
-### Data Collection and Output Files
+[Overview](#overview)
 
-- **PowerShell Script**  - The "Get-AzureNamingConfiguration.ps1" script is utilized for collecting naming preferences and organizational data to customize the HTML file.
+[Project Structure](#project-structure)
 
-- **Configuration CSV** - The "configuration.csv" file contains the selections captured during each run of the script.  Each time the script is run, this file is over written with the latest changes. In order to update these values, you **MUST** re-run the "Get-AzureNamingConfiguration.ps1" script.  This is to ensure the script can validate input, incorporate the values appropriately, and add them to the HTML based tool.
+[Important Notes](#important-notes)
 
-    > **NOTE**
-    > It is **not** recommended to manually edit this file.
+[Pages](#pages)
 
-- **HTML File** - The "AzureNamingTool.html" file contains embedded JavaScript and CSS that is used to used to build the tools and style the page.  These features will need to be enabled in your browser for the tool to work appropriately.
+## Overview
 
-### Static Data Files
+The Naming Tool was developed using a naming pattern based on [Microsoft's best practices](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/naming-and-tagging). Once the organizational components have been defined by an administrator, users can use the tool to generate a name for the desired Azure resource.
 
-- **Environments CSV** - The "environments.csv" file is a static list of the suggested environments (e.g. Development, Test, etc.) with a 3 letter short name for each environment.
+## Project Structure
 
-- **Azure Locations** - The "locations.csv" file is a static list of Azure's public locations (datacenters) with 2 or 3 alphanumeric short names for each location.
+The Azure Naming Tool is a .NET 6 Blazor application, with a RESTful API. The UI consists of several pages to allow the configuration and generation of Azure Resource names. The API provides a programmatic interface for the functionality. The application contains Docker support, allowing the site to be run as a stand-alone application, or a container.
 
-- **Azure Resources CSV** - The "resources.csv" file is a static collection of Azure's resources and associated naming restrictions (e.g. allowed characters, name lengths, abbreviations, etc.).
-There are only 3 field that should be modified in this CSV:
-    1. OPTIONAL: the components of your naming convention that can be optional for a specific resource type.
-    1. EXCLUDE: the components of your naming convention that can be excluded for a specific resource type.
-    1. SHORTNAME: the short name for each resource type.
-  
-- **VM Specific Roles CSV** - The "vmRoles.csv" file is a static collection of common server roles (e.g. DC, DNS, etc.) installed on Azure virtual machines with 2 letter short names for each role.
+### Project Components
 
-## How to Use  
+* UI/Admin
+* API
+* JSON configuration files
+* Dockerfile
 
-1. Download the GitHub Repo to a ZIP file.
-1. Extract the ZIP file to your local file system.
-1. Open PowerShell.
-1. Change your working directory to the location of the extracted ZIP file.
-1. Call the "AzureNamingConfiguration.ps1" script.
+### Important Notes
 
-    ```powershell  
-    .\Set-AzureNamingConfiguration.ps1
-    ```
+The following are important notes/aspects of the Azure Naming Tool:
 
-1. Provide input for each of the questions to build out the configuration information for the Naming Tool.
-    - QUESTION 1: Remove the unwanted naming components  
-    - QUESTION 2: Order the desired naming components  
-    - QUESTION 3: Choose delimiter between naming components
-    - QUESTION 4: Organization name and shortname  
-    - QUESTION 5: Business units and departments
-    - QUESTION 6: Remove unwanted Environments
-    - QUESTION 7: Projects, Applications, and / or Services
+* The application is designed to run as a stand-alone solution, with no internet/Azure connection.
+* The application can be run as a .NET 6 site, or as a Docker container.
+* The site can be hosted in any environment, including internal or in a public/private cloud.
+* The application uses local JSON files to store the configuration of the components.
+* The application requires persistent storage. If running as a container, a volume is required to store configuration files.
+* The application contains a *repository* folder, which contains the default component configuration JSON files. When deployed, these files are copied to the *settings* folder.
+* The Admin interface allows configurations to be "reset", if needed. This process copies the configuration from the *repository* folder to the *settings* folder.
+* The API requires an API Key for all executions. A default API Key (guid) will be generated on first launch. This value can be updated in the Admin section.
+* On first launch, the application will prompt for the Admin password to be set.
 
-1. Using File Explorer, open the directory of the extracted ZIP file
-1. Open the "AzureNamingTool.html".
-1. Select a tab to open the appropriate tool:  
-    - Reference - provides a list of all Azure services within the noted scopes, examples, and acceptable syntax.  
-    - Generator - allows you to create names based on your previously provided information for Azure resources in the noted scopes.  
+  ![Admin Password Prompt](./wwwroot/Screenshots/AdminPasswordPrompt.png)
 
-    > **Note**  
-    > Ensure you adjust the instance number according to your needs and your organization has adopted the naming strategy.  
+## Pages
 
-### Customizations
+### Home Page
 
-Any of the CSV files in the Data subfolder can be modified to meet your needs. Below are the most commonly customized sections or settings.
-Consider reviewing the "Static Data Files" section for a summary of each CSV file.
+The Home Page provides an overview of the tool and the components.
 
-#### Locations
+![Home Page](./wwwroot/Screenshots/HomePage.png)
 
-To update the location short names:
+### Configuration
 
-1. Open the 'data' subfolder.
-1. Open the 'locations.csv' file in your favorite editor (i.e. Excel).
-1. Consider the following with setting or changing region codes:
+The Configuration Page shows the current Name Generation configuration. This page also provides an Admin section for updating the configuration.
 
-    - Keep them unique so they are easily distinguishable with others
-    - Make sure they are short so they can be concatenated together with out exceeding limits for overall resource names. (Typically 3-4 characters at most)
+![Configuration Page](./wwwroot/Screenshots/ConfigurationPage.png)
 
-#### VM Roles
+### Reference
 
-These short names are based on commonly deployed roles but as with any organization, are highly subjective.  To update the VM roles and short names:
+The Reference Page provides examples for each type of Azure resource. The example values do not include any excluded naming components. Optional components are always displayed and are identified below the example. Since unique names are only required at specific scopes, the examples provided are only generated for the scopes above the resource scope: resource group, resource group & region, region, global, subscription, and tenant.
 
-1. Open the 'data' subfolder.
-1. Open the 'vmRoles.csv' file in your favorite editor (i.e. Excel).
-1. Consider the following with these names or values:
+![Reference Page](./wwwroot/Screenshots/ReferencePage.png)
 
-    - Keep them unique as you would for the region codes so they are distinguishable.
-    - Also keep them as short as possible considering they are part of the overall resource name and subject to character limits as a whole.
+### Generate
 
-> **Important**  
-> Any **changes** to the CSV files in the data subfolder require you to **re-run** the script to recompile your customizations for the naming tool!
+The Generate Page provides a dropdown menu to select an Azure resource. Once a resource is selected, naming component options are provided. Read-only components cannot be changed, like the value for a resource type or organization. Optional components, if left blank, will be null and not shown in the output. Required components do not allow a null value, and the first value in the array is set as the default.
 
-## References  
-
-[Cloud Adoption Framework (Main Page)](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/)  
-[Define your naming convention](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming)  
-[Naming and tagging conventions tracking template](https://raw.githubusercontent.com/microsoft/CloudAdoptionFramework/master/ready/naming-and-tagging-conventions-tracking-template.xlsx)  
-
-## Output Example
-
-### Tool Information
-
-![](./images/azNaming1_Info.png "Azure Naming Tool Information")
-
-### Configuration Overview
-
-![](./images/azNaming2_config.png "Azure Naming Configuration")
-
-### Reference Guide for Azure Services with Examples
-
-![](./images/azNaming3_ref.png "Azure Naming Configuration")
-
-### Azure Name Generator
-
-![](./images/azNaming4_gen.png "Azure Naming Configuration")
+![Generate Page](./wwwroot/Screenshots/GeneratePage.png)

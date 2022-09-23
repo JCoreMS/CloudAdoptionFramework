@@ -4,6 +4,166 @@
 
 ### AzGovViz version 6
 
+__Changes__ (2022-Jul-22 / Minor)
+
+* New parameter `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise)
+
+__Changes__ (2022-Jul-17 / Major)
+
+* This change impacts __GitHub Actions only__: As the PSRule CSV output can become quite big and GitHub is actively blocking files larger than 100MB ([reference](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github#file-size-limits)), the file size of the export will be validated and in case the 100MB limit is exceeded a new export excluding the column 'description' will be initiated. If that still is too large then also the column 'recommendation' will be exluded. If even then the export is exceeding the limit then the export will be deleted in order not to break the workflow at push to repo. Issue ref: #121
+* New parameter `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90). Example: `.\pwsh\AzGovVizParallel.ps1 -CriticalMemoryUsage 70`   
+![alt text](img/criticalMemoryUsage.png "CriticalMemoryUsage")
+* Minor optimizations
+
+__Changes__ (2022-Jul-14 / Major)
+
+* New feature - Cloud Adoption Framework (CAF) [Recommended abbreviations for Azure resource types](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance (HTML TenantSummary, ScopeInsights and CSV output)
+* Optimize PSRule data handling
+* Minor optimizations
+
+__Changes__ (2022-Jul-10 / Major)
+
+* Enhanced the 'Orphaned Resources' feature: if you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings':  
+![alt text](img/orphanedResourcesCostSavings.png "orphanedResourcesCostSavings")  
+&#x1F4A1; use parameter `-AzureConsumptionPeriod 14` to get consumption data for the last 14 days (default = 1 day)
+* New feature HierarchyMap (HTML): save the HierarchyMap as image (.jpeg)
+* 2022-Jul-07 PR #117 - Updated GitHub Actions OIDC (Open ID Connect) workflow: establish new connection to Azure before the 'HTML to WebApp' publishing task - thanks Dimitri Zilber
+* Use [AzAPICall](https://aka.ms/AzAPICall) PowerShell module version 1.1.18
+* Bugfixes
+* Minor optimizations
+
+__Changes__ (2022-Jul-01 / Major)
+
+* Fix change tracking date conversion issue with certain date format (removed ToString)
+* Minor optimizations
+
+__Changes__ (2022-Jun-22 / Major)
+
+* New feature 'Orphaned Resources' - Azure Resource Graph based reporting on orphaned resources (TenantSummary, ScopeInsights, CSV export). [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
+* New feature 'Resource fluctuation' - Compare against Resources from previous run and output aggregated summary of the Resource fluctuation (TenantSummary, CSV export)
+* Fix `/providers/Microsoft.Authorization/roleAssignmentScheduleInstances` AzAPICall errorhandling (error 400, 500)
+* Optimize procedure to update the AzAPICall module
+* Use AzAPICall PowerShell module version 1.1.17
+* Updated [HTML Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
+
+__Changes__ (2022-Jun-14 / Major)
+
+* Fix issue #110 / handle `DisallowedProvider` errorCode (Blueprints, PolicyInsights)
+* Fix issue #111 / replace .AddRange with foreach/.Add
+* Use AzAPICall PowerShell module version 1.1.16
+
+__Changes__ (2022-Jun-10 / Major)
+
+* Fix issue #110 / handle `DisallowedProvider` errorCode (Microsoft Defender for Cloud plans for Subscriptions)
+* Use AzAPICall PowerShell module version 1.1.15
+* Remove Azure DevOps 'PSRule for Azure' workaround / use latest PSRule.Rules.Azure PowerShell module version (current: 1.16.0)
+
+__Changes__ (2022-Jun-03 / Major)
+
+* Optimize Policy Exemption output (HTML TenantSummary, CSV output)
+* Update Azure DevOps variables YAML - add parameter `-DebugAzAPICall`
+* Update PSRule CSV output sorting
+
+__Changes__ (2022-Jun-02 / Major)
+
+* Fix ClassicAdministrators for non applicable Subscription offers
+* Use AzAPICall version 1.1.13
+
+__Changes__ (2022-May-31 / Major)
+
+* New feature - Report on 'Classic Administrators' for Subscriptions -> TenantSummary, ScopeInsights and CSV export
+* Fix consumption reporting (issue #101 - handle error: 'Management group `<ManagementGroupId>` does not have any valid subscriptions')
+* PSRule for Azure / Azure DevOps dependencies (Az.Resources) workaround -> use PSRule for Azure version 1.14.3 (else latest)
+
+__Changes__ (2022-May-21 / Major)
+
+> Note: Azure DevOps and GitHub users must update the YAML file(s) and PowerShell files (`AzGovVizParallel.ps1` and `prerequisites.ps1`)
+
+* Integration of [PSRule for Azure](#integrate-psrule-for-azure). This feature is optional, use new parameter `-DoPSRule`
+  * Provides a [Azure Well-Architected Framework](https://docs.microsoft.com/en-gb/azure/architecture/framework/) aligned suite of rules for validating Azure resources
+  * Provides meaningful information to allow remediation
+  * New parameter `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+* Optional feature: publish HTML to Azure Web App (check the __[Setup Guide](setup.md)__) in Azure DevOps or GitHub Actions - thanks Wayne Meyer
+* New feature / report on [enabled Subscription Features](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features) TenantSummary, ScopeInsights and CSV export
+* Decomissioned Azure DevOps `.pipelines` - use the new YAML files `.azuredevops/pipelines/*` 
+* Fix [#issue92](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/issues/92) -> pipeline .azuredevops/pipelines/AzGovViz.pipeline.yml
+* Update Azure DevOps pipelines / use AzurePowershell@5
+* Update prerequisites.ps1
+
+__Changes__ (2022-May-05 / Major)
+
+* fix: `using:scriptPath` variable in foreach parallel (this is only relevant for Azure DevOps and GitHub if you have a non default folder structure in your repository)
+
+__Changes__ (2022-May-02 / Minor)
+
+* __Tenant Summary__ Change Tracking - RBAC Role assignments: add PIM (Priviledged Identity Management) information
+* Azure DevOps pipeline YAML - change `vmImage: 'ubuntu-18.04'` to  `vmImage: 'ubuntu-20.04'`
+* Published new HTML [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
+
+__Changes__ (2022-May-01 / Major)
+
+* Switch from ARM API endpoint `roleAssignmentSchedules` to `roleAssignmentScheduleInstances`, switch from api-version `2020-10-01-preview` to `2020-10-01`
+* Update GitHub Actions workflows
+* Update `pwsh/prerequisites.ps1` script (relevant for GitHub Actions and Azure DevOps Pipeline)
+* Update __[API reference](#api-reference)__
+* Update __[Setup Guide](setup.md)__
+* Bugfix
+
+__Changes__ (2022-Apr-25 / Major)
+
+* New JSON output *_PolicyAll.json - Contains all relations of Policy/Set definitions and Policy assignments
+* New parameter `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+* Leveraging AzAPICall PowerShell module. The AzAPICall function has been removed from the AzGovViz code base and has been published as a module to the [PoweShell Gallery](https://www.powershellgallery.com/packages/AzAPICall) ([GitHub](https://aka.ms/AzAPICall))
+* Foreach -parallel import the AzAPICall module instead of $using:
+* Optimize GitHub Actions workflows (YAML)
+* Added list of [APIs](#api) that are polled by AzGovViz
+* Microsoft Graph `v1.0/directoryObjects/getByIds` do batching is exceeds 1000 identities
+* Performance optimization
+* Bugfixes
+
+__Changes__ (2022-Jan-31 / Major)
+
+* New __TenantSummary | RBAC__ feature - insights on all Role definitions that are capable to write Role assignments
+* __TenantSummary | Subscriptions, Resources & Defender | Subscriptions__ report (new) [Role assignment limits](https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting#azure-role-assignments-limit)
+* Handling orphaned Policy assignments (scope Management Group)
+* Datacollection for Management Groups process in batches (batch per Management Group level)
+* Update Dockerfile
+* Update API version for Resources, ResourceGroups and Subscriptions
+* Further enrich _PolicyDefinitions and _PolicySetDefinitions CSV outputs
+* HTML file performance optimization
+* Include instructions for GitHub Actions in the __[Setup Guide](setup.md)__
+* New [demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html) uploaded
+* Bugfixes
+
+__Changes__ (2022-Jan-16 / Major)
+
+* New parameter `-ManagementGroupsOnly` - collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+* New feature __TenantSummary | Subscriptions, Resources & Defender__, __TenantSummary | Azure Active Directory__ and __ScopeInsights__ insights on UserAssignedIdentities/Resources - which resource has an user assigned managed identity assigned / vice versa. Includes CSV export. Thanks to Thomas Naunheim (Microsoft Azure MVP) for inspiration :)
+* New feature __TenantSummary | Policy | Policy assignments orphanded__ (Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted)
+* Optimize __DefinitionInsights__ collapsible JSON definitions
+* Defender plans usage / highlight use of depcrecated plans such as Container Registry & Kubernetes
+* New 'Large Tenant' feature __TenantSummary | Policy | Policy assignments__ if the number of Policy assignments exceeds the `-HtmlTableRowsLimit` parameter's value (default = 20.000) then the html table will not be created / the CSV file will still be created 
+* New feature  __TenantSummary | Azure Active Directory | AAD ServicePrincipals type=ManagedIdentity__ orphaned Managed Identities (for Policy assignment related Managed Identities - Policy assignment does not exist anymore)
+* Fix PIM (Priviliged Identity Management) state for inherited Subscription Role assignments
+* __TenantSummary | Azure Active Directory__ add link to [AzADServicePrincipalInsights](#azadserviceprincipalinsights) (POC)
+* Add CSV export for Policy Exemptions
+* Add workflow files (YAML) for GitHub Actions (one for [OpenID Connect (OIDC)](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure))
+* Bugfixes
+* HTML output patch jQuery / use latest version 3.6.0
+* Update [Demo](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)
+* AzAPICall enhanced error handling (GeneralError, ResourceGroupNotFound)
+* Script optimization / prepare for PS module
+
+__Changes__ (2021-Dec-10 / Minor)
+
+* deprecation of parameter `-AzureDevOpsWikiAsCode` / Based on environment variables the script will detect the code run platform
+* changed throttlelimit default from 5 to 10
+
+__Changes__ (2021-Dec-09 / Minor)
+
+* [Run AzGovViz in GitHub CodeSpaces](https://github.com/JulianHayward/Azure-MG-Sub-Governance-Reporting/blob/master/setup.md#azgovviz-github-codespaces) - __thanks!__ Carlos Mendible (Microsoft Cloud Solution Architect - Spain)
+* JSON output update -> filenames will indicate if Role assignment is PIM (Priviliged Identity Management) based
+
 __Changes__ (2021-Nov-23 / Major)
 
 * Add Microsoft Defender for Cloud 'Defender Plans' reporting (__TenantSummary__ -> Subscriptions, Resources & Defender; __ScopeInsights__ -> Defender Plans)
@@ -12,7 +172,7 @@ __Changes__ (2021-Nov-23 / Major)
 * Fix __ScopeInsights__ Tags usage
 * Fix dateTime formatting / use default format (createdOn/updatedOn)
 * Consumption feature has potential to fail. Changed Azure Consumption feature default = disabled; introducing new parameter `-DoAzureConsumption`
-* Changed `-HtmlTableRowsLimit`default from 40.000 to 20.000 
+* Changed `-HtmlTableRowsLimit` default from 40.000 to 20.000 
 * CSV output related changes
   * Update *_RoleAssignments.csv output (add column for scope ResourceGroup name; add column for scope Resource name)
   * Optimize *_PolicyDefinitions.csv and *_PolicySetDefinitions.csv file content / add BuiltIn definitions

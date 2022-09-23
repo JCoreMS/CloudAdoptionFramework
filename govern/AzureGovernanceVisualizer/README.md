@@ -52,24 +52,37 @@ Listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/arch
   * [Required permissions in Azure Active Directory](#required-permissions-in-azure-active-directory)
   * [PowerShell](#powershell)
   * [Parameters](#parameters)
+  * [API reference](#api-reference)
 * [Integrate with AzOps](#integrate-with-azops)
+* [Integrate PSRule for Azure](#integrate-psrule-for-azure)
 * [Stats](#stats)
 * [Security](#security)
 * [Known issues](#known-issues)
 * [Facts](#facts)
 * [Contributions](#contributions)
 * [AzAdvertizer](#azadvertizer)
-* [Final note](#final-note)
+* [AzADServicePrincipalInsights](#azadserviceprincipalinsights)
+* [Closing note](#closing-note)
 
 ## Release history
 
-[Release history](history.md)
+__Changes__ (2022-Jul-22 / Minor)
+
+* New parameter `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
+
+Passed tests: Powershell Core 7.2.5 on Windows  
+Passed tests: Powershell Core 7.2.5 Azure DevOps hosted agent ubuntu-20.04  
+Passed tests: Powershell Core 7.2.5 Github Actions hosted agent ubuntu-latest  
+Passed tests: Powershell Core 7.2.5 GitHub Codespaces mcr.microsoft.com/powershell:latest  
+Passed tests: AzureCloud, AzureUSGovernment, AzureChinaCloud
+
+[Full release history](history.md)
 
 ## Demo
 
-<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html" target="_blank">![Demo](img/demo4_66.png)</a>
+<a href="https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html" target="_blank">![Demo](img/demo4_66.png)</a>
 
-[Demo (v5_major_20210818_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_Enterprise-Scale_WingTip_v5_major_20210818_2.html)  
+[Demo (v6_major_20220622_2)](https://www.azadvertizer.net/azgovvizv4/demo/AzGovViz_demo.html)  
 Enterprise-Scale ([WingTip](https://github.com/Azure/Enterprise-Scale/blob/main/docs/reference/wingtip/README.md)) implementation
 
 More [demo output](https://github.com/JulianHayward/AzGovViz)
@@ -111,6 +124,8 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
     * Lists all Exemptions (scopes: Management Groups, Subscriptions, ResourceGroups, Resources)
     * Enrich information on Exemption scope
     * Summary on expired Exemptions
+  * Policy assignments orphaned
+    * Policy assignments's Policy definition does not exist / likely Management Group scoped Policy defintion - Management Group deleted
   * Policy assignments throughout the entirety of scopes (Management Groups, Subscriptions and Resource Groups)
     * Core information on Policy assignments
       * NonCompliance Message on Policy assignment for a PolicySet will only show the default non-compliance message
@@ -146,9 +161,11 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
       * Related Policy assignments (Policy assignment that leverages the DeployIfNotExists (DINE) or Modify effect)
       * System metadata 'createdOn, createdBy' ('createdBy' identity is fully resolved)
       * Determine if the Role assignment is 'standing' or PIM (Privileged Identity Management) managed
-  * ~~Role assignments ClassicAdministrators~~
+      * Determine if the Role assignmet's Role definition is capable to write Role assignments
+  * Role assignments ClassicAdministrators
   * Security & Best practice analysis
     * Existence of custom Role definition that reflect 'Owner' permissions
+    * Report all Role definitions that are capable to write Role assignements, list all Role assignments for those Role definitions
     * Role assignments for 'Owner' permissions on identity-type == 'ServicePrincipal' 
     * Role assignments for 'Owner' permissions on identity-type != 'Group'
     * Role assignments for 'User Access Administrator' permissions on identity-type != 'Group'
@@ -162,7 +179,7 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
   * Hierarchy Settings | Require authorization for Management Group creation
 * __Subscriptions, Resources & Defender__
   * Subscription insights
-    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path
+    * QuotaId, State, Tags, Microsoft Defender for Cloud Secure Score, Cost, Management Group path, Role assignment limit, enabled Preview features
   * Tag Name usage
     * Insights on usage of Tag Names on Subscriptions, ResourceGroups and Resources
   * Resources
@@ -173,9 +190,19 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
         * Explicit Resource Provider state per Subscription
       * Resource Locks
         * Aggregated insights for Lock and respective Lock-type usage on Subscriptions, ResourceGroups and Resources
+    * Orphaned Resources (ARG)
+      * If you run AzGovViz with parameter -DoAzureConsumption then the orphaned resources output will show you potential cost savings for orphaned resources with intent 'cost savings'
+      * The orphaned resources feature is based on [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) ARG queries and workbooks by Dolev Shor
+    * Cloud Adoption Framework (CAF) [Recommended abbreviations for Azure resource types](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) compliance
   * Microsoft Defender for Cloud
     * Summary of Microsoft Defender for Cloud coverage by plan (count of Subscription per plan/tier)
     * Summary of Microsoft Defender for Cloud plans coverage by Subscription (plan/tier)
+    * Highlight the usage of deprecated Defender plans (e.g. Container Registry & Kubernetes)
+  * UserAssigned Managed Identities assigned to Resources / vice versa
+    * Summary of all UserAssigned Managed Identities assigned to Resources
+    * Summary of Resources that have an UserAssigned Managed Identity assigned
+  * [Integrate PSRule for Azure](#integrate-psrule-for-azure)
+    * Well-Architected Framework aligned best practice analysis for resources, including guidance for remediation
 * __Diagnostics__
   * Management Groups Diagnostic settings report
     * Management Group, Diagnostic setting name, target type (LA, SA, EH), target Id, Log Category status
@@ -206,7 +233,10 @@ Short presentation on AzGovViz [[download](slides/AzGovViz_intro.pdf)]
 * __Azure Active Directory (AAD)__
   * Insights on those Service Principals where a Role assignment exists (scopes: Management Group, Subscription, ResourceGroup, Resource):
     * Type=ManagedIdentity
-      * Core information on the Service Principal such as related Ids and use case information
+      * Core information on the Service Principal such as related Ids, use case information and Role assignments
+      * For UserManaged Identities the count of assignment to Resources is reported
+      * Orphaned Managed Identity - Policy assignment related Managed Identities / the related Policy assignment does not exist
+      * UserAssigned Managed Identity - count of Resources that it is assigned to
     * Type=Application
       * Secrets and Certificates expiry information & warning
       * Report on external Service Principals
@@ -281,7 +311,7 @@ This permission is <b>mandatory</b> in each and every scenario!
       <th>Permissions</th>
     </tr>
     <tr>
-      <td><b>ANY</b><br>Console or AzureDevOps Pipeline</td>
+      <td><b>ANY</b><br>Console / Azure DevOps / GitHub Actions ..</td>
       <td><b>Reader</b> Role assignment on <b>Management Group</b></td>
     </tr>
   </tbody>
@@ -308,13 +338,13 @@ This permission is <b>mandatory</b> in each and every scenario!
       </td>
     </tr>
     <tr>
-      <td><b>C</b><br>Console | Service Principal</td>
+      <td><b>C</b><br>Console | Service Principal | Managed Identity</td>
       <td>
         <table>
           <tbody>
             <tr>
-              <th>Feature</th>
-              <th>Permissions</th>
+              <th>Capability</th>
+              <th>API Permissions</th>
             </tr>
             <tr>
               <td>Get AAD<br>Users</td>
@@ -330,16 +360,17 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
     <tr>
-      <td><b>D</b><br>Azure DevOps Pipeline | ServicePrincipal (Service Connection)</td>
+      <td><b>D</b><br>Azure DevOps / Github Actions | ServicePrincipal</td>
       <td>
         <table>
           <tbody>
             <tr>
-              <th>Feature</th>
-              <th>Permissions</th>
+              <th>Capability</th>
+              <th>API Permissions</th>
             </tr>
             <tr>
               <td>Get AAD<br>Users</td>
@@ -355,6 +386,7 @@ This permission is <b>mandatory</b> in each and every scenario!
             </tr>
           </tbody>
         </table>
+        Optional: AAD Role 'Directory readers' could be used instead of API permissions (more 'read' than required)
       </td>
     </tr>
   </tbody>
@@ -374,6 +406,11 @@ Screenshot Azure Portal
   * ~~Az.Resources~~
   * ~~Az.ResourceGraph~~
   * [Install the Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)
+* Requires PowerShell Module 'AzAPICall'.  
+Running in Azure DevOps or GitHub Actions the AzAPICall PowerShell module will be installed automatically.  
+AzAPICall resources:
+  * [![PowerShell Gallery Version (including pre-releases)](https://img.shields.io/powershellgallery/v/AzAPICall?include_prereleases&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/AzAPICall)  
+  * [GitHub Repository](https://aka.ms/AzAPICall)
 * Usage/command
   * `.\AzGovVizParallel.ps1 -ManagementGroupId <your-Management-Group-Id>`
 
@@ -381,7 +418,7 @@ Screenshot Azure Portal
   * `-ManagementGroupId` Management Group Id (Root Management Group Id equals your Tenant Id)
   * `-CsvDelimiter` - The world is split into two kinds of delimiters - comma and semicolon - choose yours (default is semicolon ';')
   * `-OutputPath` 
-  * `-AzureDevOpsWikiAsCode` - Use this parameter only when running AzGovViz in a Azure DevOps Pipeline
+  * ~~`-AzureDevOpsWikiAsCode` - Use this parameter only when running AzGovViz in a Azure DevOps Pipeline~~ Based on environment variables the script will detect the code run platform
   * `-DoNotShowRoleAssignmentsUserData` - Scrub personally identifiable information (PII)
   * `-LimitCriticalPercentage` - Limit warning level, default is 80%
   * ~~`-HierarchyTreeOnly`~~ `-HierarchyMapOnly` - Output only the __HierarchyMap__ for Management Groups including linked Subscriptions
@@ -404,7 +441,7 @@ Screenshot Azure Portal
   * `-SubscriptionId4AzContext` - Define the Subscription Id to use for AzContext (default is to use a random Subscription Id)
   * `-PolicyAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Policy Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-PolicyAtScopeOnly $true`
   * `-RBACAtScopeOnly` - Removing 'inherited' lines in the HTML file for 'Role Assignments'; use this parameter if you run against a larger tenants. Note using parameter `-LargeTenant` will set `-RBACAtScopeOnly $true`
-  * ~~`-CsvExport`~~ `-NoCsvExport` - Do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
+  * ~~`-CsvExport`~~ `-NoCsvExport` - Do not export enriched data for 'Role assignments', 'Policy assignments' data and 'all Resources' (subscriptionId,  managementGroup path, resourceType, id, name, location, tags, createdTime, changedTime)
   * ~~`-PolicyIncludeResourceGroups`~~ `-DoNotIncludeResourceGroupsOnPolicy` - Do not include Policy assignments on ResourceGroups
   * ~~`-RBACIncludeResourceGroupsAndResources`~~ `-DoNotIncludeResourceGroupsAndResourcesOnRBAC` - Do not include Role assignments on ResourceGroups and Resources
   * `-ChangeTrackingDays` - Define the period for Change tracking on newly created and updated custom Policy, PolicySet and RBAC Role definitions and Policy/RBAC Role assignments (default is '14') 
@@ -415,9 +452,73 @@ Screenshot Azure Portal
   * `-LargeTenant` - A large tenant is a tenant with more than ~500 Subscriptions - the HTML output for large tenants simply becomes too big. Using this parameter the following parameters will be set: -PolicyAtScopeOnly $true, -RBACAtScopeOnly $true, -NoResourceProvidersDetailed $true, -NoScopeInsights $true
   * `-HtmlTableRowsLimit` - Although the parameter `-LargeTenant` was introduced recently, still the html output may become too large to be processed properly. The new parameter defines the limit of rows - if for the html processing part the limit is reached then the html table will not be created (csv and json output will still be created). Default rows limit is 20.000
   * `-AADGroupMembersLimit` - Defines the limit (default=500) of AAD Group members; For AAD Groups that have more members than the defined limit Group members will not be resolved 
-  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability and resource type statistic (featured for large tenants)
+  * `-NoResources` - Will speed up the processing time but information like Resource diagnostics capability, resource type stats, UserAssigned Identities assigned to Resources is excluded (featured for large tenants)
   * `-StatsOptOut` - Opt out sending [stats](#stats)
   * `-NoSingleSubscriptionOutput` - Single __Scope Insights__ output per Subscription should not be created
+  * `-ManagementGroupsOnly` - Collect data only for Management Groups (Subscription data such as e.g. Policy assignments etc. will not be collected)
+  * `-ShowMemoryUsage` - Shows memory usage at memory intense sections of the scripts, this shall help you determine if the the worker is well sized for AzGovViz
+  * `-CriticalMemoryUsage` - Define at what percentage of memory usage the garbage collection should kick in (default=90)
+  * `-ExcludedResourceTypesDiagnosticsCapable` - Resource Types to be excluded from processing analysis for diagnostic settings capability (default: microsoft.web/certificates)
+  * PSRule for Azure
+    * `-DoPSRule` - Execute [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure). Aggregated results are integrated in the HTML output, detailed results (per resource) are exported to CSV
+    * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+    * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
+
+### API reference
+
+AzGovViz polls the following APIs
+
+| Endpoint | API version | API name |
+| --- | --- | --- |
+| MS Graph | beta | /groups/`aadGroupId`/transitiveMembers |
+| MS Graph | v1.0 | /applications |
+| MS Graph | v1.0 | /directoryObjects/getByIds |
+| MS Graph | v1.0 | /users |
+| MS Graph | v1.0 | /groups |
+| MS Graph | v1.0 | /servicePrincipals |
+| ARM |2021-05-01-preview | /`resourceId`/providers/Microsoft.Insights/diagnosticSettingsCategories |
+| ARM |2018-11-01-preview | /`scopeId`/providers/Microsoft.Blueprint/blueprints/`blueprintName` |
+| ARM |2021-06-01 | /providers/Microsoft.Authorization/policyDefinitions |
+| ARM |2021-06-01 | /providers/Microsoft.Authorization/policySetDefinitions |
+| ARM |2018-07-01 | /providers/Microsoft.Authorization/roleDefinitions |
+| ARM |2020-02-01 | /providers/Microsoft.Management/getEntities |
+| ARM |2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyAssignments |
+| ARM |2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyDefinitions |
+| ARM |2020-07-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policyExemptions |
+| ARM |2021-06-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/policySetDefinitions |
+| ARM |2015-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignments |
+| ARM |2020-10-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
+| ARM |2015-07-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Authorization/roleDefinitions |
+| ARM |2018-11-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.Blueprint/blueprints |
+| ARM |2019-11-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.CostManagement/query |
+| ARM |2020-01-01-preview | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/microsoft.insights/diagnosticSettings |
+| ARM |2019-10-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize |
+| ARM |2020-05-01 | /providers/Microsoft.Management/managementGroups/`managementGroupId` |
+| ARM |2020-02-01 | /providers/Microsoft.Management/managementGroups/`tenantId`/settings |
+| ARM |2020-05-01 | /providers/Microsoft.Management/managementGroups |
+| ARM |2021-03-01 | /providers/Microsoft.ResourceGraph/resources |
+| ARM |2016-09-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/locks |
+| ARM |2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyAssignments |
+| ARM |2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyDefinitions |
+| ARM |2020-07-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policyExemptions |
+| ARM |2021-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/policySetDefinitions |
+| ARM |2015-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignments |
+| ARM |2020-10-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentScheduleInstances |
+| ARM |2019-08-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleAssignmentsUsageMetrics |
+| ARM |2015-07-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Authorization/roleDefinitions |
+| ARM |2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprintAssignments |
+| ARM |2018-11-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Blueprint/blueprints |
+| ARM |2019-11-01 | /subscriptions/`subscriptionId`/providers/Microsoft.CostManagement/query |
+| ARM |2021-05-01-preview | /subscriptions/`subscriptionId`/providers/Microsoft.Insights/diagnosticSettings |
+| ARM |2019-10-01 | /subscriptions/`subscriptionId`/providers/Microsoft.PolicyInsights/policyStates/latest/summarize |
+| ARM |2020-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Resources/tags/default |
+| ARM |2018-06-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/pricings |
+| ARM |2020-01-01 | /subscriptions/`subscriptionId`/providers/Microsoft.Security/securescores |
+| ARM |2019-10-01 | /subscriptions/`subscriptionId`/providers |
+| ARM |2021-04-01 | /subscriptions/`subscriptionId`/resourcegroups |
+| ARM |2021-04-01 | /subscriptions/`subscriptionId`/resources |
+| ARM |2020-01-01 | /subscriptions |
+| ARM |2020-01-01 | /tenants |
 
 ## Integrate with AzOps
 
@@ -433,6 +534,27 @@ You can integrate AzGovViz (same project as AzOps).
           include:
             - master
 ```
+
+## Integrate PSRule for Azure
+
+Let´s use [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) and leverage over 260 pre-built rules to validate Azure resources based on the Microsoft Well-Architected Framework (WAF) principles.  
+PSRule for Azure is listed as [security monitoring tool](https://docs.microsoft.com/en-us/azure/architecture/framework/security/monitor-tools) in the Microsoft Well-Architected Framework.
+
+Parameter: `-DoPSRule` (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule`)  
+Optional parameters:  
+  * `-PSRuleVersion` - Define the PSRule..Rules.Azure PowerShell module version, if undefined then 'latest' will be used
+  * `-PSRuleFailedOnly` - PSRule for Azure will only report on failed resource (may save some space/noise). (e.g. `.\pwsh\AzGovVizParallel.ps1 -DoPSRule -PSRuleFailedOnly`)
+
+Outputs:
+* HTML (summarized)
+  * TenantSummary
+  * ScopeInsights
+    * Management Group (all resources below that scope)
+    * Subscription
+* CSV (detailed, per resource)
+
+TenantSummary HTML output example:  
+![alt text](img/PSRuleForAzure_preview.png "PSRule for Azure / AzGovViz TenantSummary")
 
 ## Stats
 
@@ -526,15 +648,27 @@ ARM Limits are not acquired programmatically, these are hardcoded. The links use
 
 ## Contributions
 
-Please feel free to contribute. Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
+Please feel free to contribute. 
+
+Thanks to so many supporters - testing, giving feedback, making suggestions, presenting use-case, posting/blogging articles, refactoring code - THANK YOU!
 
 Thanks Stefan Stranger (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. Make sure you read Stefan´s Blog Article: [Enterprise-Scale - Policy Driven Governance](https://stefanstranger.github.io/2020/08/28/EnterpriseScalePolicyDrivenGovernance)
 
-Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale.
+Thanks Frank Oltmanns-Mack (Microsoft) for providing me with his AzGovViz outputs executed on his implementation of EnterpriseScale. 
+
+Carlos Mendible (Microsoft) gracias por tu contribución on the project - run AzGovViz with GitHub Codespaces.
 
 Special thanks to Tim Wanierke, Brooks Vaughn and Friedrich Weinmann (Microsoft).
 
+And another big thanks to Wayne Meyer (Microsoft) for constant support and building bridges.
+
 Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!
+
+Kudos to [LorDOniX](https://github.com/LorDOniX/json-viewer) for JSON-viewer!
+
+Kudos to Bernie White and [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure) team!
+
+Kudos to Dolev Shor for [Azure Orphan Resources - GitHub](https://github.com/dolevshor/azure-orphan-resources) _ARG queries and workbooks_!
 
 ## AzAdvertizer
 
@@ -542,6 +676,12 @@ Kudos to the [TableFilter](https://www.tablefilter.com) Project Team!
 
 Also check <https://www.azadvertizer.net> - AzAdvertizer helps you to keep up with the pace by providing overview and insights on new releases and changes/updates for Azure Governance capabilities such as Azure Policy's Policy definitions, initiatives (Set definitions), aliases and Azure RBAC's Role definitions and resource provider operations.
 
-## Final Note
+## AzADServicePrincipalInsights
+
+Also check <https://aka.ms/AzADServicePrincipalInsights> - What about your Azure Active Directory Service Principals? Get deep insights and track your Service Principals with AzADServicePrincipalInsights. Create a HTML overview, export to CSV and JSON and use it for further processing...
+
+![alt text](img/azadserviceprincipalinsights_preview.png "example output")
+
+## Closing Note
 
 Please note that while being developed by a Microsoft employee, AzGovViz is not a Microsoft service or product. AzGovViz is a personal/community driven project, there are none implicit or explicit obligations related to this project, it is provided 'as is' with no warranties and confer no rights.
