@@ -12,7 +12,6 @@ namespace AzureNamingTool.Models
         public string Exclude { get; set; }
         public string Property { get; set; }
         private string _ShortName;
-        [Required()]
         [JsonPropertyName("ShortName")]
         public string ShortName
         {
@@ -30,5 +29,6 @@ namespace AzureNamingTool.Models
         public string InvalidCharactersConsecutive{ get; set; }
         public string Regx { get; set; }
         public string StaticValues { get; set; }
+        public bool Enabled { get; set; } = true;
     }
 }

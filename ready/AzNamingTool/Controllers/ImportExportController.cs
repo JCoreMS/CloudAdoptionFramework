@@ -26,11 +26,11 @@ namespace AzureNamingTool.Controllers
         /// <returns>json - JSON configuration file</returns>
         [HttpGet]
         [Route("[action]")]
-        public async Task<IActionResult> ExportConfiguration()
+        public async Task<IActionResult> ExportConfiguration(bool includeAdmin = false)
         {
             try
             {
-                serviceResponse = await ImportExportService.ExportConfig();
+                serviceResponse = await ImportExportService.ExportConfig(includeAdmin);
                 if (serviceResponse.Success)
                 {
                     return Ok(serviceResponse.ResponseObject);
@@ -42,7 +42,7 @@ namespace AzureNamingTool.Controllers
             }
             catch (Exception ex)
             {
-                LogHelper.LogAdminMessage("ERROR", ex.Message);
+                AdminLogService.PostItem(new AdminLogMessage() { Title = "ERROR", Message = ex.Message });
                 return BadRequest(ex);
             }
         }
@@ -71,7 +71,7 @@ namespace AzureNamingTool.Controllers
             }
             catch (Exception ex)
             {
-                LogHelper.LogAdminMessage("ERROR", ex.Message);
+                AdminLogService.PostItem(new AdminLogMessage() { Title = "ERROR", Message = ex.Message });
                 return BadRequest(ex);
             }
         }
