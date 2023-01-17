@@ -9,6 +9,7 @@
 @inject NavigationManager NavigationManager
 @using Blazored.Toast.Configuration
 @inject ProtectedLocalStorage storage
+@inject ProtectedSessionStorage session
 
 <PageTitle>Azure Naming Tool</PageTitle>
 <BlazoredToasts Position="ToastPosition.BottomRight" ShowProgressBar="true" />
@@ -19,6 +20,11 @@
 
     <main>
         <div class="top-row px-4 auth @theme.ThemeStyle">
+
+            @if ((admin) && (bool.Parse(ConfigurationHelper.GetAppSetting("DevMode"))))
+            {
+                <div class="warning-message">DEV MODE Enabled! This can cause unexpected behavior! Use at your own risk!</div>
+            }
             <div class="px-3">
                 <label class="switch" title="App Theme">
                     <input type="checkbox" checked="@isdarktheme" @oninput="ThemeChanged">
@@ -38,7 +44,7 @@
     </main>
 </div>
 
-<button onclick="topFunction()" id="btnScrollToTop" class="btn btn-success btn-sm" title="Go to top">Top</button>
+<button onclick="topFunction()" id="btnScrollToTop" class="btn btn-success btn-sm" title="Go to top"><span class="oi oi-arrow-circle-top" style="vertical-align:text-top;"></span> Top</button>
 @if (PasswordModalOpen)
 {
     <PasswordModal OnClose="@OnPasswordModalClose">
@@ -49,6 +55,7 @@
     [CascadingParameter] public IModalService Modal { get; set; }
     private ThemeInfo theme = new() { ThemeName = "Light", ThemeStyle = "bg-default text-black" };
     private bool isdarktheme = false;
+    private bool admin;
 
     public bool PasswordModalOpen { get; set; }
     public Type PageType { get; set; }
@@ -62,8 +69,8 @@
 
     protected override async void OnInitialized()
     {
-        GeneralHelper.VerifyConfiguration();
-        GeneralHelper.VerifySecurity(state);
+        ConfigurationHelper.VerifyConfiguration();
+        ConfigurationHelper.VerifySecurity(state);
 
         // Check that the admin password is set
         if (!state.Password)
@@ -71,17 +78,17 @@
             OpenPasswordModal();
         }
     }
-
-
-
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
+    {        
+        var adminresult = await session.GetAsync<bool>("admin");
+        admin = (bool)adminresult.Value;
         if (firstRender)
         {
             try
             {
-                var result = await storage.GetAsync<string>("apptheme");
-                theme.ThemeStyle = result.Success ? result.Value : "bg-default text-black";
+                var themeresult = await storage.GetAsync<string>("apptheme");
+                theme.ThemeStyle = themeresult.Success ? themeresult.Value : "bg-default text-black";
             }
             catch
             {
@@ -147,14 +154,14 @@
         if (confrimAPIKeyGenerate)
         {
 
-            var config = GeneralHelper.GetConfigurationData();
+            var config = ConfigurationHelper.GetConfigurationData();
             config.SALTKey = "";
             config.AdminPassword = "";
             config.APIKey = "";
 
-            GeneralHelper.UpdateSettings(config);
-            GeneralHelper.ResetState(state);
-            GeneralHelper.VerifySecurity(state);
+            ConfigurationHelper.UpdateSettings(config);
+            ConfigurationHelper.ResetState(state);
+            ConfigurationHelper.VerifySecurity(state);
 
             toastService.ShowSuccess("The site has been reset.", "MAGIC RESET ENABLED!");
 

@@ -1,9 +1,9 @@
-﻿@using AzureNamingTool.Helpers
-@using AzureNamingTool.Models
-@using AzureNamingTool.Services
+﻿@using AzureNamingTool.Helpers;
+@using AzureNamingTool.Models;
+@using System.Runtime.Caching;
+@using AzureNamingTool.Services;
 @using Microsoft.AspNetCore.Html
 @using Microsoft.Extensions.Logging
-@using System.Runtime.Caching
 @inject IJSRuntime JsRuntime
 @inject StateContainer state
 @inject ProtectedSessionStorage session
@@ -12,7 +12,7 @@
 @inject IJSRuntime jsRuntime
 
 <div class="modal fade show d-block" tabindex="-1" role="dialog">
-    <div class="modal-backdrop fade show" @onclick="Close"></div>
+    <div class="modal-backdrop fade show" @onclick="Cancel"></div>
     <div class="modal-dialog" style="z-index: 1050">
         <!-- Pop it above the backdrop -->
         <div class="modal-content  @theme.ThemeStyle">
@@ -36,8 +36,8 @@
                         This form allows you to set the Admin password, API key, and configuration for the Azure Naming Tool.
                     </p>
                     <div class="card mb-3">
-                        <h5 class="card-header @theme.ThemeStyle">
-                            <a class="text-decoration-none text-black" data-toggle="collapse" style="display:block;font-weight:bold;" href="#updatepassword" role="button" aria-expanded="false" aria-controls="updatepassword">
+                        <h5 class="card-header text-white bg-secondary text-white">
+                            <a class="text-decoration-none text-white" data-toggle="collapse" style="display:block;font-weight:bold;" href="#updatepassword" role="button" aria-expanded="false" aria-controls="updatepassword">
                                 <h5><span class="oi oi-chevron-bottom" aria-hidden="true"></span> Update Password</h5>
                             </a>
                         </h5>
@@ -59,8 +59,8 @@
                     </div>
 
                     <div class="card mb-3">
-                        <h5 class="card-header @theme.ThemeStyle">
-                            <a class="text-decoration-none text-black" data-toggle="collapse" style="display:block;font-weight:bold;" href="#updateapikey" role="button" aria-expanded="false" aria-controls="updateapikey">
+                        <h5 class="card-header text-white bg-secondary text-white">
+                            <a class="text-decoration-none text-white" data-toggle="collapse" style="display:block;font-weight:bold;" href="#updateapikey" role="button" aria-expanded="false" aria-controls="updateapikey">
                                 <h5><span class="oi oi-chevron-bottom" aria-hidden="true"></span> API Key</h5>
                             </a>
                         </h5>
@@ -77,8 +77,8 @@
                     </div>
 
                     <div class="card mb-3">
-                        <h5 class="card-header @theme.ThemeStyle">
-                            <a class="text-decoration-none text-black" data-toggle="collapse" style="display:block;font-weight:bold;" href="#clearcache" role="button" aria-expanded="false" aria-controls="clearcache">
+                        <h5 class="card-header text-white bg-secondary text-white">
+                            <a class="text-decoration-none text-white" data-toggle="collapse" style="display:block;font-weight:bold;" href="#clearcache" role="button" aria-expanded="false" aria-controls="clearcache">
                                 <h5><span class="oi oi-chevron-bottom" aria-hidden="true"></span> Clear Cache</h5>
                             </a>
                         </h5>
@@ -102,7 +102,7 @@
                 {
                     <button type="button" class="btn btn-success" @onclick="@(e => AdminFormAction("login"))" title="Login">Login</button>
                 }
-                <button @onclick="Close" class="btn btn-secondary">Close</button>
+                <button @onclick="Cancel" class="btn btn-secondary">Close</button>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@
     private bool admin;
     private bool disabled = true;
 
-    private Config config = GeneralHelper.GetConfigurationData();
+    private SiteConfiguration config = ConfigurationHelper.GetConfigurationData();
 
     protected override async void OnInitialized()
     {
@@ -254,7 +254,7 @@
                 break;
         }
 
-        config = GeneralHelper.GetConfigurationData();
+        config = ConfigurationHelper.GetConfigurationData();
 
         await InvokeAsync(() =>
         {
@@ -300,7 +300,7 @@
             case "password":
                 newpassword = value;
                 // Validate the password complexity
-                if (GeneralHelper.ValidatePassword(newpassword))
+                if (ValidationHelper.ValidatePassword(newpassword))
                 {
                     disabled = false;
                 }
@@ -316,5 +316,5 @@
         }
     }
 
-    async Task Close() => await ModalInstance.CancelAsync();
+    async Task Cancel() => await ModalInstance.CancelAsync();
 }
